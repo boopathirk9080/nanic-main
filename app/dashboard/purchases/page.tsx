@@ -7,10 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import PurchaseForm from "@/components/purchases/purchase-form"
 import PurchaseTable from "@/components/purchases/purchase-table"
-import DateRangeFilter from "@/components/purchases/date-range-filter"
-import BillPreviewModal from "@/components/bills/bill-preview-modal"
-import EditPurchaseModal from "@/components/purchases/edit-purchase-modal"
-import { Plus } from "lucide-react"
+import { Plus, Search } from "lucide-react"
 
 interface Purchase {
   id: string
@@ -21,13 +18,14 @@ interface Purchase {
   total_amount: number
   status: string
   notes: string
-}
-
-interface BillItem {
-  product_name: string
-  quantity: number
-  unit_price: number
-  subtotal: number
+  purchase_type: 'local' | 'import'
+  local_company_id?: string
+  local_companies?: {
+    company_name: string
+    company_code: string
+  }
+  purchase_items?: any[]
+  import_purchase_items?: any[]
 }
 
 export default function PurchasesPage() {
@@ -35,14 +33,6 @@ export default function PurchasesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
-  const [dateRange, setDateRange] = useState<{ startDate: string; endDate: string }>({
-    startDate: "",
-    endDate: "",
-  })
-  const [selectedBill, setSelectedBill] = useState<any>(null)
-  const [showBillPreview, setShowBillPreview] = useState(false)
-  const [editingPurchase, setEditingPurchase] = useState<any>(null)
-  const [showEditModal, setShowEditModal] = useState(false)
 
   const supabase = createClient()
 
@@ -57,6 +47,10 @@ export default function PurchasesPage() {
         .from("purchases")
         .select(`
           *,
+          local_companies (
+            company_name,
+            company_code
+          ),
           purchase_items(
             id,
             product_id,
@@ -64,6 +58,14 @@ export default function PurchasesPage() {
             unit_price,
             subtotal,
             products(name)
+          ),
+          import_purchase_items(
+            id,
+            import_product_id,
+            quantity_packs,
+            unit_price,
+            subtotal,
+            import_products(product_name)
           )
         `)
         .order("purchase_date", { ascending: false })
@@ -78,41 +80,18 @@ export default function PurchasesPage() {
   }
 
   const handleAddPurchase = async () => {
-    fetchPurchases()
+    await fetchPurchases()
     setShowForm(false)
   }
 
-  const handleEditPurchase = (purchase: Purchase) => {
-    setEditingPurchase(purchase)
-    setShowEditModal(true)
+  const handleViewBill = async (purchase: Purchase) => {
+    // Implement bill preview modal here
+    console.log("View bill for:", purchase)
   }
 
-  const handleViewBill = async (purchase: any) => {
-    try {
-      const billItems: BillItem[] = purchase.purchase_items.map((item: any) => ({
-        product_name: item.products?.name || "Product",
-        quantity: item.quantity,
-        unit_price: item.unit_price,
-        subtotal: item.subtotal,
-      }))
-
-      const bill = {
-        bill_number: `BILL-${purchase.id.slice(0, 8).toUpperCase()}`,
-        bill_date: purchase.purchase_date,
-        customer_name: purchase.customer_name,
-        customer_email: purchase.customer_email,
-        customer_phone: purchase.customer_phone,
-        items: billItems,
-        total_amount: purchase.total_amount,
-        notes: purchase.notes,
-        shop_name: "Medical Shop",
-      }
-
-      setSelectedBill(bill)
-      setShowBillPreview(true)
-    } catch (error) {
-      console.error("Error preparing bill:", error)
-    }
+  const handleEditPurchase = (purchase: Purchase) => {
+    // Implement edit modal here
+    console.log("Edit purchase:", purchase)
   }
 
   const handleDeletePurchase = async (purchaseId: string) => {
@@ -122,9 +101,10 @@ export default function PurchasesPage() {
       const { error } = await supabase.from("purchases").delete().eq("id", purchaseId)
 
       if (error) throw error
-      fetchPurchases()
+      await fetchPurchases()
     } catch (error) {
       console.error("Error deleting purchase:", error)
+      alert("Failed to delete purchase")
     }
   }
 
@@ -135,36 +115,20 @@ export default function PurchasesPage() {
       const { error } = await supabase.from("purchases").delete().in("id", purchaseIds)
 
       if (error) throw error
-      fetchPurchases()
+      await fetchPurchases()
     } catch (error) {
       console.error("Error deleting purchases:", error)
+      alert("Failed to delete purchases")
     }
   }
 
   const filteredPurchases = purchases.filter((purchase) => {
-    const matchesSearch =
-      purchase.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      purchase.customer_email.toLowerCase().includes(searchTerm.toLowerCase())
-
-    if (!matchesSearch) return false
-
-    if (dateRange.startDate || dateRange.endDate) {
-      const purchaseDate = new Date(purchase.purchase_date)
-      const purchaseDateOnly = new Date(purchaseDate.getFullYear(), purchaseDate.getMonth(), purchaseDate.getDate())
-
-      if (dateRange.startDate) {
-        const startDate = new Date(dateRange.startDate)
-        if (purchaseDateOnly < startDate) return false
-      }
-
-      if (dateRange.endDate) {
-        const endDate = new Date(dateRange.endDate)
-        endDate.setHours(23, 59, 59, 999)
-        if (purchaseDateOnly > endDate) return false
-      }
-    }
-
-    return true
+    const searchLower = searchTerm.toLowerCase()
+    return (
+      purchase.customer_name.toLowerCase().includes(searchLower) ||
+      purchase.customer_email?.toLowerCase().includes(searchLower) ||
+      purchase.customer_phone?.includes(searchTerm)
+    )
   })
 
   return (
@@ -181,36 +145,62 @@ export default function PurchasesPage() {
       </div>
 
       {showForm && (
-        <Card>
+       
+             <Card>
           <CardHeader>
             <CardTitle>Create New Purchase</CardTitle>
-            <CardDescription>Add products and generate bill for customer</CardDescription>
+            <CardDescription>Add a new purchase transaction</CardDescription>
           </CardHeader>
           <CardContent>
             <PurchaseForm onSuccess={handleAddPurchase} onCancel={() => setShowForm(false)} />
           </CardContent>
         </Card>
+     
       )}
+      {/* {showForm && (
+  <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[99] flex items-center scroll-auto justify-center">
+    <Card className="relative z-[100] shadow-xl w-full max-w-2xl">
+      <CardHeader>
+        <CardTitle>Create New Purchase</CardTitle>
+        <CardDescription>Add a new purchase transaction</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <PurchaseForm
+          onSuccess={handleAddPurchase}
+          onCancel={() => setShowForm(false)}
+        />
+      </CardContent>
+    </Card>
+  </div>
+)} */}
+
 
       <Card>
         <CardHeader>
           <CardTitle>Purchase History</CardTitle>
-          <CardDescription>Total purchases: {filteredPurchases.length}</CardDescription>
+          <CardDescription>
+            Total purchases: {filteredPurchases.length}
+            {searchTerm && ` (filtered from ${purchases.length})`}
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-4 flex-wrap items-end">
-            <div className="flex-1 min-w-xs">
+            <div className="relative flex-1 min-w-[300px]">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
               <Input
                 placeholder="Search by customer name or email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
               />
             </div>
-            <DateRangeFilter dateRange={dateRange} onDateRangeChange={setDateRange} />
           </div>
 
           {isLoading ? (
-            <div className="text-center py-8">Loading purchases...</div>
+            <div className="text-center py-8">
+              <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              <p className="mt-2 text-gray-600">Loading purchases...</p>
+            </div>
           ) : (
             <PurchaseTable
               purchases={filteredPurchases}
@@ -223,15 +213,6 @@ export default function PurchasesPage() {
           )}
         </CardContent>
       </Card>
-
-      <BillPreviewModal isOpen={showBillPreview} onClose={() => setShowBillPreview(false)} bill={selectedBill} />
-
-      <EditPurchaseModal
-        isOpen={showEditModal}
-        onClose={() => setShowEditModal(false)}
-        purchase={editingPurchase}
-        onSuccess={fetchPurchases}
-      />
     </div>
   )
 }
