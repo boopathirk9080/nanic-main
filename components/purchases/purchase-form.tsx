@@ -771,7 +771,7 @@ export default function PurchaseForm({ onSuccess, onCancel, editData }: Purchase
         </CardContent>
       </Card>
 
-      {purchaseItems.length > 0 && (
+      {purchaseItems.length >= 0 && (
         <Card>
           <CardHeader>
             <CardTitle>Bill Summary ({purchaseItems.length} items)</CardTitle>

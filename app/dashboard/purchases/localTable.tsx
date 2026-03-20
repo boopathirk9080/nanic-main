@@ -275,15 +275,6 @@ export default function LocalTable() {
     return <div className="text-center py-12 text-gray-500">Loading...</div>;
   }
 
-  if (companies.length === 0) {
-    return (
-      <div className="text-center py-12 text-gray-500">
-        <p className="text-lg">No local companies found.</p>
-        <p className="text-sm mt-2">Add your first company to get started!</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center mb-4">
@@ -296,83 +287,93 @@ export default function LocalTable() {
         </Button>
       </div>
 
-      {selectedCompanies.size > 0 && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex justify-between items-center">
-          <span className="text-sm font-medium text-blue-900">
-            {selectedCompanies.size} company(ies) selected
-          </span>
-          <div className="flex gap-2">
-            <Button
-              onClick={() => handleMultiDelete(Array.from(selectedCompanies))}
-              className="bg-red-600 hover:bg-red-700 text-white gap-2"
-              size="sm"
-            >
-              <Trash2 className="w-4 h-4" />
-              Delete Selected
-            </Button>
-          </div>
+      {companies.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">
+          <p className="text-lg">No local companies found.</p>
+          <p className="text-sm mt-2">Add your first company to get started!</p>
         </div>
+      ) : (
+        <>
+          {selectedCompanies.size > 0 && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex justify-between items-center">
+              <span className="text-sm font-medium text-blue-900">
+                {selectedCompanies.size} company(ies) selected
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  onClick={() => handleMultiDelete(Array.from(selectedCompanies))}
+                  className="bg-red-600 hover:bg-red-700 text-white gap-2"
+                  size="sm"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  Delete Selected
+                </Button>
+              </div>
+            </div>
+          )}
+
+          <div className="overflow-x-auto rounded-lg border">
+            <table className="w-full">
+              <thead className="bg-gray-50">
+                <tr className="border-b">
+                  <th className="text-left py-3 px-4 font-semibold w-10">
+                    <Checkbox
+                      checked={selectedCompanies.size === companies.length && companies.length > 0}
+                      onCheckedChange={handleSelectAll}
+                    />
+                  </th>
+                  <th className="text-left py-3 px-4 font-semibold">Company Name</th>
+                  <th className="text-left py-3 px-4 font-semibold">Company Code</th>
+                  <th className="text-left py-3 px-4 font-semibold">Contact Person</th>
+                  <th className="text-left py-3 px-4 font-semibold">Contact Email</th>
+                  <th className="text-center py-3 px-4 font-semibold">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white">
+                {companies.map((company) => (
+                  <tr key={company.id} className="border-b hover:bg-gray-50 transition-colors">
+                    <td className="py-3 px-4">
+                      <Checkbox
+                        checked={selectedCompanies.has(company.id)}
+                        onCheckedChange={() => handleSelectCompany(company.id)}
+                      />
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="font-medium">{company.company_name}</div>
+                    </td>
+                    <td className="py-3 px-4 text-sm text-gray-600">{company.company_code}</td>
+                    <td className="py-3 px-4 text-sm text-gray-600">{company.contact_person || '-'}</td>
+                    <td className="py-3 px-4 text-sm text-gray-600">{company.contact_email || '-'}</td>
+                    <td className="py-3 px-4">
+                      <div className="flex gap-1 justify-center">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleEditCompany(company)}
+                          title="Edit Company"
+                          className="hover:bg-yellow-50 h-8 w-8 p-0"
+                        >
+                          <Edit2 className="w-4 h-4 text-yellow-600" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleDeleteCompany(company.id)}
+                          title="Delete Company"
+                          className="hover:bg-red-50 h-8 w-8 p-0"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-600" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
-      <div className="overflow-x-auto rounded-lg border">
-        <table className="w-full">
-          <thead className="bg-gray-50">
-            <tr className="border-b">
-              <th className="text-left py-3 px-4 font-semibold w-10">
-                <Checkbox
-                  checked={selectedCompanies.size === companies.length && companies.length > 0}
-                  onCheckedChange={handleSelectAll}
-                />
-              </th>
-              <th className="text-left py-3 px-4 font-semibold">Company Name</th>
-              <th className="text-left py-3 px-4 font-semibold">Company Code</th>
-              <th className="text-left py-3 px-4 font-semibold">Contact Person</th>
-              <th className="text-left py-3 px-4 font-semibold">Contact Email</th>
-              <th className="text-center py-3 px-4 font-semibold">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white">
-            {companies.map((company) => (
-              <tr key={company.id} className="border-b hover:bg-gray-50 transition-colors">
-                <td className="py-3 px-4">
-                  <Checkbox
-                    checked={selectedCompanies.has(company.id)}
-                    onCheckedChange={() => handleSelectCompany(company.id)}
-                  />
-                </td>
-                <td className="py-3 px-4">
-                  <div className="font-medium">{company.company_name}</div>
-                </td>
-                <td className="py-3 px-4 text-sm text-gray-600">{company.company_code}</td>
-                <td className="py-3 px-4 text-sm text-gray-600">{company.contact_person || '-'}</td>
-                <td className="py-3 px-4 text-sm text-gray-600">{company.contact_email || '-'}</td>
-                <td className="py-3 px-4">
-                  <div className="flex gap-1 justify-center">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleEditCompany(company)}
-                      title="Edit Company"
-                      className="hover:bg-yellow-50 h-8 w-8 p-0"
-                    >
-                      <Edit2 className="w-4 h-4 text-yellow-600" />
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleDeleteCompany(company.id)}
-                      title="Delete Company"
-                      className="hover:bg-red-50 h-8 w-8 p-0"
-                    >
-                      <Trash2 className="w-4 h-4 text-red-600" />
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
 
       {showForm && (
         <LocalForm
