@@ -81,10 +81,10 @@ export default function LoginForm({ onSubmit, isLoading = false }: LoginFormProp
               {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
-          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-700">
+          {/* <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-700">
             <p className="font-medium mb-2">Need an account?</p>
             <p className="text-xs">Use the sign-up page to create a new account with your email and password.</p>
-          </div>
+          </div> */}
         </CardContent>
       </Card>
     </div>
