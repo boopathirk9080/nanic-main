@@ -51,7 +51,22 @@ export default function DashboardOverview() {
     try {
       setIsLoading(true)
 
-      let purchasesQuery = supabase.from("purchases").select("*")
+      // Get current authenticated user
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError) {
+        console.error("Error getting user:", userError)
+        return
+      }
+      if (!user) {
+        console.error("No authenticated user found")
+        setIsLoading(false)
+        return
+      }
+
+      let purchasesQuery = supabase
+        .from("purchases")
+        .select("*")
+        .eq("user_id", user.id)
 
       if (customDateRange.startDate && customDateRange.endDate) {
         purchasesQuery = purchasesQuery
@@ -67,14 +82,39 @@ export default function DashboardOverview() {
           .lte("purchase_date", endDate.toISOString())
       }
 
-      // Fetch products
-      const { data: products } = await supabase.from("products").select("*")
+      // Fetch products for current user
+      const { data: products, error: productsError } = await supabase
+        .from("products")
+        .select("*")
+        .eq("user_id", user.id)
 
-      // Fetch purchases with optional date filter
-      const { data: purchases } = await purchasesQuery
+      if (productsError) {
+        console.error("Error fetching products:", productsError)
+      }
 
-      // Fetch purchase items for revenue calculation
-      const { data: purchaseItems } = await supabase.from("purchase_items").select("*")
+      // Fetch purchases with optional date filter for current user
+      const { data: purchases, error: purchasesError } = await purchasesQuery
+
+      if (purchasesError) {
+        console.error("Error fetching purchases:", purchasesError)
+      }
+
+      // Fetch purchase items for revenue calculation (only for user's purchases)
+      let purchaseItems: any[] = []
+      if (purchases && purchases.length > 0) {
+        const { data: items, error: purchaseItemsError } = await supabase
+          .from("purchase_items")
+          .select("*")
+          .in("purchase_id", purchases.map(p => p.id))
+
+        if (purchaseItemsError) {
+          console.error("Error fetching purchase items:", purchaseItemsError)
+        } else {
+          purchaseItems = items || []
+        }
+      }
+
+
 
       const totalProducts = products?.length || 0
       const lowStockProducts = products?.filter((p) => p.quantity < 10).length || 0

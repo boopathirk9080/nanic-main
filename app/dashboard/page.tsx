@@ -11,15 +11,29 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const supabase = createClient()
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      try {
+        const supabase = createClient()
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser()
 
-      if (!user) {
+        if (error) {
+          console.error("Auth error:", error)
+          router.push("/auth/login")
+          return
+        }
+
+        if (!user) {
+          router.push("/auth/login")
+          return
+        }
+      } catch (error) {
+        console.error("Unexpected auth error:", error)
         router.push("/auth/login")
         return
       }
+
       setIsLoading(false)
     }
 
