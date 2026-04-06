@@ -33,7 +33,7 @@ export default function SignUpPage() {
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -44,6 +44,23 @@ export default function SignUpPage() {
         },
       })
       if (error) throw error
+
+      // Insert into profiles table as backup (trigger should handle this, but this ensures it works)
+      if (data.user) {
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .upsert({
+            id: data.user.id,
+            email: email,
+            full_name: fullName,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+        if (profileError) {
+          console.warn('Profile insert failed, but trigger should handle this:', profileError)
+        }
+      }
+
       router.push("/auth/sign-up-success")
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred")

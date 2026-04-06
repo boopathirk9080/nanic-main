@@ -45,6 +45,9 @@ export default function PurchasesPage() {
   const fetchPurchases = async () => {
     try {
       setIsLoading(true)
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
       const { data, error } = await supabase
         .from("purchases")
         .select(`
@@ -70,6 +73,7 @@ export default function PurchasesPage() {
             import_products(product_name)
           )
         `)
+        .eq("user_id", user.id)
         .order("purchase_date", { ascending: false })
 
       if (error) throw error

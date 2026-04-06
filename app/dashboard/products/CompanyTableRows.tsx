@@ -13,8 +13,8 @@ import { Button } from "@/components/ui/button";
 import { Company } from "@/types";
 
 interface CompanyTableProps {
-  companies: Company[];
-  onEdit: (company: Company) => void;
+  companies: Company[] | undefined;
+  onEdit: (company: Company | null) => void;
   onDelete: (id: string) => void;
 }
 
@@ -23,7 +23,7 @@ export default function CompanyTable({
   onEdit,
   onDelete,
 }: CompanyTableProps) {
-  if (companies.length === 0) {
+  if (!companies || companies.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
         No companies added yet.

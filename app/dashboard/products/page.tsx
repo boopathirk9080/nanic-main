@@ -658,6 +658,9 @@ interface Company {
   contact_email?: string;
   contact_phone?: string;
   address?: string;
+  user_id?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface ImportProduct {
@@ -669,7 +672,10 @@ interface ImportProduct {
   strip_count: number;
   per_strip_tablet_count: number;
   import_price: number;
-  companies?: Company;
+  companies?: {
+    company_name: string;
+    company_code: string;
+  };
 }
 
 interface Product {
@@ -685,6 +691,9 @@ interface Product {
   selling_price: number;
   category: string;
   company_name?: string;
+  quantity: number;
+  unit_price: number;
+  description: string;
 }
 
 export default function ProductsPage() {
@@ -710,48 +719,64 @@ export default function ProductsPage() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      console.log("Current user:", user);
       setUserId(user?.id || null);
+      // Pass userId directly to avoid race condition
+      if (user?.id) {
+        fetchAllData(user.id);
+      } else {
+        console.log("No user found, cannot fetch data");
+      }
     };
     getUser();
-    fetchAllData();
   }, []);
 
-  const fetchAllData = async () => {
+  const fetchAllData = async (userId: string) => {
     setIsLoading(true);
     await Promise.all([
-      fetchProducts(),
-      fetchCompanies(),
-      fetchImportProducts(),
+      fetchProducts(userId),
+      fetchCompanies(userId),
+      fetchImportProducts(userId),
     ]);
     setIsLoading(false);
   };
 
   // Companies CRUD
-  const fetchCompanies = async () => {
+  const fetchCompanies = async (userId: string) => {
     try {
+      console.log("Fetching companies for userId:", userId);
       const { data, error } = await supabase
         .from("companies")
         .select("*")
+        .eq("user_id", userId)
         .order("company_name");
 
       if (error) throw error;
+      console.log("Fetched companies:", data);
       setCompanies(data || []);
     } catch (error) {
       console.error("Error fetching companies:", error);
     }
   };
 
-  const handleAddCompany = async (companyData: Omit<Company, "id">) => {
+  const handleAddCompany = async (data: Omit<Company, "id">) => {
     try {
       const { error } = await supabase.from("companies").insert([
         {
-          ...companyData,
+          company_name: data.company_name,
+          company_code: data.company_code,
+          contact_person: data.contact_person,
+          contact_email: data.contact_email,
+          contact_phone: data.contact_phone,
+          address: data.address,
           user_id: userId,
         },
       ]);
 
       if (error) throw error;
-      await fetchCompanies();
+      if (userId) {
+        await fetchCompanies(userId);
+      }
       setShowCompanyForm(false);
       alert("Company added successfully!");
     } catch (error: any) {
@@ -760,17 +785,26 @@ export default function ProductsPage() {
     }
   };
 
-  const handleUpdateCompany = async (companyData: Omit<Company, "id">) => {
+  const handleUpdateCompany = async (data: Omit<Company, "id">) => {
     if (!editingCompany) return;
 
     try {
       const { error } = await supabase
         .from("companies")
-        .update(companyData)
+        .update({
+          company_name: data.company_name,
+          company_code: data.company_code,
+          contact_person: data.contact_person,
+          contact_email: data.contact_email,
+          contact_phone: data.contact_phone,
+          address: data.address,
+        })
         .eq("id", editingCompany.id);
 
       if (error) throw error;
-      await fetchCompanies();
+      if (userId) {
+        await fetchCompanies(userId);
+      }
       setEditingCompany(null);
       setShowCompanyForm(false);
       alert("Company updated successfully!");
@@ -785,8 +819,10 @@ export default function ProductsPage() {
       const { error } = await supabase.from("companies").delete().eq("id", id);
 
       if (error) throw error;
-      await fetchCompanies();
-      await fetchImportProducts();
+      if (userId) {
+        await fetchCompanies(userId);
+        await fetchImportProducts(userId);
+      }
       alert("Company deleted successfully!");
     } catch (error: any) {
       console.error("Error deleting company:", error);
@@ -795,8 +831,9 @@ export default function ProductsPage() {
   };
 
   // Import Products CRUD
-  const fetchImportProducts = async () => {
+  const fetchImportProducts = async (userId: string) => {
     try {
+      console.log("Fetching import products for userId:", userId);
       const { data, error } = await supabase
         .from("import_products")
         .select(
@@ -808,9 +845,11 @@ export default function ProductsPage() {
           )
         `
         )
+        .eq("user_id", userId)
         .order("product_name");
 
       if (error) throw error;
+      console.log("Fetched import products:", data);
       setImportProducts(data || []);
     } catch (error) {
       console.error("Error fetching import products:", error);
@@ -829,7 +868,9 @@ export default function ProductsPage() {
       ]);
 
       if (error) throw error;
-      await fetchImportProducts();
+      if (userId) {
+        await fetchImportProducts(userId);
+      }
       setShowImportForm(false);
       alert("Import product added successfully!");
     } catch (error: any) {
@@ -850,7 +891,9 @@ export default function ProductsPage() {
         .eq("id", editingImportProduct.id);
 
       if (error) throw error;
-      await fetchImportProducts();
+      if (userId) {
+        await fetchImportProducts(userId);
+      }
       setEditingImportProduct(null);
       setShowImportForm(false);
       alert("Import product updated successfully!");
@@ -868,7 +911,9 @@ export default function ProductsPage() {
         .eq("id", id);
 
       if (error) throw error;
-      await fetchImportProducts();
+      if (userId) {
+        await fetchImportProducts(userId);
+      }
       alert("Import product deleted successfully!");
     } catch (error: any) {
       console.error("Error deleting import product:", error);
@@ -932,8 +977,10 @@ export default function ProductsPage() {
 
       if (updateError) throw updateError;
 
-      await fetchProducts();
-      await fetchImportProducts(); // Refresh to show updated count
+      if (userId) {
+        await fetchProducts(userId);
+        await fetchImportProducts(userId); // Refresh to show updated count
+      }
       setActiveTab("inventory");
       alert(`Added ${strips} strips to inventory successfully!`);
     } catch (error: any) {
@@ -943,8 +990,9 @@ export default function ProductsPage() {
   };
 
   // Products CRUD
-  const fetchProducts = async () => {
+  const fetchProducts = async (userId: string) => {
     try {
+      console.log("Fetching products for userId:", userId);
       const { data, error } = await supabase
         .from("products")
         .select(
@@ -956,6 +1004,7 @@ export default function ProductsPage() {
           )
         `
         )
+        .eq("user_id", userId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
@@ -964,8 +1013,12 @@ export default function ProductsPage() {
         data?.map((p) => ({
           ...p,
           company_name: p.companies?.company_name,
+          quantity: p.strip_count,
+          unit_price: p.selling_price || 0,
+          description: p.category || "",
         })) || [];
 
+      console.log("Fetched products:", formattedData);
       setProducts(formattedData);
     } catch (error) {
       console.error("Error fetching products:", error);
@@ -1024,10 +1077,14 @@ export default function ProductsPage() {
 
         if (importUpdateError) throw importUpdateError;
 
-        await fetchImportProducts(); // Refresh import products
+        if (userId) {
+          await fetchImportProducts(userId); // Refresh import products
+        }
       }
 
-      await fetchProducts();
+      if (userId) {
+        await fetchProducts(userId);
+      }
       alert("Stock updated successfully!");
     } catch (error: any) {
       console.error("Error updating stock:", error);
@@ -1074,10 +1131,14 @@ export default function ProductsPage() {
 
         if (importUpdateError) throw importUpdateError;
 
-        await fetchImportProducts(); // Refresh import products
+        if (userId) {
+          await fetchImportProducts(userId); // Refresh import products
+        }
       }
 
-      await fetchProducts();
+      if (userId) {
+        await fetchProducts(userId);
+      }
       alert("Product deleted successfully!");
     } catch (error: any) {
       console.error("Error deleting product:", error);

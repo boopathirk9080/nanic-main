@@ -1,0 +1,31 @@
+-- Update user profile settings
+-- This query updates the profiles table with new settings
+
+-- Example query to update a user's profile:
+-- UPDATE public.profiles
+-- SET
+--   full_name = 'New Full Name',
+--   shop_name = 'New Organization Name',
+--   tax_id = '12-3456789',
+--   updated_at = CURRENT_TIMESTAMP
+-- WHERE id = 'user-uuid-here';
+
+-- Or using parameters (in application code):
+-- UPDATE public.profiles
+-- SET
+--   full_name = $1,
+--   shop_name = $2,
+--   tax_id = $3,
+--   updated_at = CURRENT_TIMESTAMP
+-- WHERE id = $4;
+
+-- Supabase client code equivalent:
+-- const { error } = await supabase
+--   .from("profiles")
+--   .update({
+--     full_name: formData.full_name || null,
+--     shop_name: formData.shop_name || null,
+--     tax_id: formData.tax_id || null,
+--     updated_at: new Date().toISOString(),
+--   })
+--   .eq("id", profile.id)
